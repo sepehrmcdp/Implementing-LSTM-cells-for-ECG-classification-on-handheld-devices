@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="DPHC.DPHC2.MainActivity"
+    tools:context="com.sharif.sepehr.watch_heart.MainActivity"
     tools:deviceIds="wear_round">
 
     <TextView
@@ -12,5 +12,5 @@
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:layout_centerVertical="true"
-        android:text="Hello Round World!" />
+        android:text="@string/hello_round" />
 </RelativeLayout>
