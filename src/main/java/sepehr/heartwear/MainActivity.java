@@ -1,4 +1,4 @@
-package sepehr.heartwear;
+package DPHC.DPHC2;
 
 import android.app.Activity;
 import android.app.ActivityManager;
@@ -14,8 +14,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-import sepehr.heartwear.arrays.arrayFactory.ArraysFactory;
-import sepehr.heartwear.wavelet.Wavelet;
+
+import DPHC.DPHC2.readmatfile.readmatfiles;
+import DPHC.DPHC2.wavelet.Wavelet;
 
 public class MainActivity extends Activity {
 
@@ -105,21 +106,7 @@ public class MainActivity extends Activity {
         return in;
     }
 
-    private float[][] arrayCutter2D(float[][] input, int x, int y) {
-        float[][] output = new float[x][y];
 
-        for (int i = 0; i < x; i++) {
-            System.arraycopy(input[i], 0, output[i], 0, y);
-        }
-        return output;
-    }
-
-    private float[] arrayCutter1D(float[] input, int x) {
-        float[] output = new float[x];
-
-        System.arraycopy(input, 0, output, 0, x);
-        return output;
-    }
 
     public float[][] transposeMatrix(float[][] m) {
 
@@ -214,6 +201,42 @@ public class MainActivity extends Activity {
         return output;
     }
 
+    private float[] concatenate(float[] x1, float[] x2) {
+        float[] output =
+                new float[x1.length + x2.length];
+
+        int index = 0;
+        for (float temp : x1) {
+            output[index] = temp;
+            index++;
+        }
+        for (float temp : x2) {
+            output[index] = temp;
+            index++;
+        }
+
+        return output;
+    }
+
+
+
+    private float[][] randomArray(int n,int m) {
+        float[][] randomArray = new float[n][m];
+
+
+        for (int i = 0; i < n; i++) {
+            for(int j=0; j < m ;j++) {
+
+                randomArray[i][j] = random.nextFloat();
+
+            }
+        }
+        return randomArray;
+    }
+
+
+
+
     private float[] downSample(float[] x, int rate) {
 
         if (rate == 1)
@@ -249,87 +272,180 @@ public class MainActivity extends Activity {
 
     }
 
-    private String mainFunction() {
+    private String mainFunction() throws Exception {
 
         killBakGroundProcess();
 
         double[] allPcaTime = new double[9];
         double[] allWaveletTime = new double[9];
         double[] allLstmTime = new double[9];
+        double[] allLstm_A_Time = new double[9];
+        double[] allblend_Time = new double[9];
 
-        ArraysFactory arrayFactory = new ArraysFactory(getApplicationContext());
 
-        final int rawDownSample = 1;
-        final int waveletDownSample = 1;
-        final int waveletOmit = 0;
-        final int pcaInputDim = 528;//pcaInputCalculator(rawDownSample, waveletDownSample, waveletOmit);
-        final int pcaOutputDim = 400;
 
-        final int lstmDepth = 4;
-        final int lstmNh = 30;
+        final int rawDownSample_B = 2;
+        final int waveletDownSample_B = 2;
+        final int waveletOmit_B = 0;
+        final int pcaInputDim_B =  pcaInputCalculator(rawDownSample_B, waveletDownSample_B, waveletOmit_B);
+        final int pcaOutputDim_B = 400;
 
-        final int lstmWidth = pcaOutputDim / lstmDepth;
 
-        float[][] w0 = transposeMatrix(arrayCutter2D(
-                arrayFactory.get2DFloats("w0"), pcaOutputDim, lstmNh));
+        final int lstmDepth = 5;
+        final int lstmNh = 50;
+        final int lstm_A_Nh=30;
+        final int DepthA=10;
 
-        float[][] w1 = transposeMatrix(arrayCutter2D(
-                arrayFactory.get2DFloats("w1"), pcaOutputDim, lstmNh));
+        final int lstmWidth = pcaOutputDim_B / lstmDepth;
 
-        float[][] w2 = transposeMatrix(arrayCutter2D(
-                arrayFactory.get2DFloats("w2"), pcaOutputDim, lstmNh));
+/*          In order to get the app to work input matrices should be loaded here
 
-        float[][] w3 = transposeMatrix(arrayCutter2D(
-                arrayFactory.get2DFloats("w3"), pcaOutputDim, lstmNh));
 
-        float[][] u0 = transposeMatrix(arrayCutter2D(
-                arrayFactory.get2DFloats("u0"), lstmNh, lstmNh));
+            These inputs(w,u,b,c,h) are results of train data which should be generated in advance
+*/
+        //Weights for betha model
+        readmatfiles matreader = new readmatfiles(getApplicationContext());
+        float[][] w0 = transposeMatrix(matreader.get2DFloats("w0.txt",pcaOutputDim_B, lstmNh));
 
-        float[][] u1 = transposeMatrix(arrayCutter2D(
-                arrayFactory.get2DFloats("u1"), lstmNh, lstmNh));
 
-        float[][] u2 = transposeMatrix(arrayCutter2D(
-                arrayFactory.get2DFloats("u2"), lstmNh, lstmNh));
+        float[][] w1 = transposeMatrix(matreader.get2DFloats("w1.txt",pcaOutputDim_B, lstmNh));
+        float[][] w2 = transposeMatrix(matreader.get2DFloats("w2.txt",pcaOutputDim_B, lstmNh));
+        float[][] w3 = transposeMatrix(matreader.get2DFloats("w3.txt",pcaOutputDim_B, lstmNh));
 
-        float[][] u3 = transposeMatrix(arrayCutter2D(
-                arrayFactory.get2DFloats("u3"), lstmNh, lstmNh));
+        float[][] u0 = transposeMatrix(matreader.get2DFloats("u0.txt", lstmNh, lstmNh));
 
-        float[] b0 = arrayCutter1D(arrayFactory.get1DFloats("b0"), lstmNh);
-        float[] b1 = arrayCutter1D(arrayFactory.get1DFloats("b1"), lstmNh);
-        float[] b2 = arrayCutter1D(arrayFactory.get1DFloats("b2"), lstmNh);
-        float[] b3 = arrayCutter1D(arrayFactory.get1DFloats("b3"), lstmNh);
-        float[] fullyConnectedB = arrayCutter1D(
-                arrayFactory.get1DFloats("fully_connected_b"), 7);
+        float[][] u1 = transposeMatrix(matreader.get2DFloats("u1.txt", lstmNh, lstmNh));
 
-        float[] c = arrayCutter1D(arrayFactory.get1DFloats("c"), lstmNh);
-        float[] h = arrayCutter1D(arrayFactory.get1DFloats("h"), lstmNh);
+        float[][] u2 = transposeMatrix(matreader.get2DFloats("u2.txt", lstmNh, lstmNh));
+
+        float[][] u3 = transposeMatrix(matreader.get2DFloats("u3.txt", lstmNh, lstmNh));
+
+        //offsets
+        float[] b0 = matreader.get1DFloats("b0.txt",lstmNh);
+        float[] b1 = matreader.get1DFloats("b1.txt",lstmNh);
+        float[] b2 = matreader.get1DFloats("b2.txt",lstmNh);
+        float[] b3 = matreader.get1DFloats("b3.txt",lstmNh);
+
+
+
+        float[] c = matreader.get1DFloats("c.txt",lstmNh);
+        float[] h = matreader.get1DFloats("h.txt",lstmNh);
+        float[] c_ecg = matreader.get1DFloats("c_ecg.txt",lstm_A_Nh);
+        float[] h_ecg = matreader.get1DFloats("h_ecg.txt",lstm_A_Nh);
+        float[] c_w = matreader.get1DFloats("c_w.txt",lstm_A_Nh);
+        float[] h_w = matreader.get1DFloats("h_w.txt",lstm_A_Nh);
+
+        final int dim_L=510;
+        final int dim_R=280;
+
+        final int lstmWidth_A1 =  dim_L / DepthA ;
+        final int lstmWidth_A2 = dim_R / DepthA ;
+
+        //weights for alpha model
+        float[][] w0_A1 = transposeMatrix(matreader.get2DFloats("w0_A1.txt",dim_L, lstm_A_Nh));
+
+
+        float[][] w1_A1 = transposeMatrix(matreader.get2DFloats("w1_A1.txt",dim_L, lstm_A_Nh));
+
+
+        float[][] w2_A1 = transposeMatrix(matreader.get2DFloats("w2_A1.txt",dim_L, lstm_A_Nh));
+
+
+        float[][] w3_A1 = transposeMatrix(matreader.get2DFloats("w3_A1.txt",dim_L, lstm_A_Nh));
+
+
+        float[][] w0_A2 = transposeMatrix(matreader.get2DFloats("w0_A2.txt",dim_R, lstm_A_Nh));
+
+
+        float[][] w1_A2 = transposeMatrix(matreader.get2DFloats("w1_A1.txt",dim_R, lstm_A_Nh));
+
+
+        float[][] w2_A2 = transposeMatrix(matreader.get2DFloats("w2_A2.txt",dim_R, lstm_A_Nh));
+
+
+        float[][] w3_A2 = transposeMatrix(matreader.get2DFloats("w3_A2.txt",dim_R, lstm_A_Nh));
+
+
+
+        float[][] u0_A = transposeMatrix(matreader.get2DFloats("u0_A.txt",lstm_A_Nh, lstm_A_Nh));
+
+
+        float[][] u1_A = transposeMatrix(matreader.get2DFloats("u1_A.txt",lstm_A_Nh, lstm_A_Nh));
+
+
+        float[][] u2_A = transposeMatrix(matreader.get2DFloats("u2_A.txt",lstm_A_Nh, lstm_A_Nh));
+
+
+        float[][] u3_A = transposeMatrix(matreader.get2DFloats("u3_A.txt",lstm_A_Nh, lstm_A_Nh));
+
+        //offsets
+        float[] b0_A = matreader.get1DFloats("b0_A.txt",lstm_A_Nh);
+        float[] b1_A = matreader.get1DFloats("b1_A.txt",lstm_A_Nh);
+        float[] b2_A = matreader.get1DFloats("b2_A.txt",lstm_A_Nh);
+        float[] b3_A = matreader.get1DFloats("b3_A.txt",lstm_A_Nh);
+
+
+
+
 
         //fully connected
-        float[][] fullyConnected = transposeMatrix(arrayCutter2D(
-                arrayFactory.get2DFloats("fully_connected_w"), lstmNh, 7));
+        float[][] fullyConnected = transposeMatrix(matreader.get2DFloats("fullyconnected.txt", lstmNh ,7));
 
-        //according to the paper this is the lstm input and it's name must be x.
-        float[] x = arrayCutter1D(arrayFactory.get1DFloats("x"), pcaOutputDim);
+        float[][] fullyConnected_A = transposeMatrix(matreader.get2DFloats("fullyconnected_A.txt", 2*lstm_A_Nh ,7));
+
+        //first layer of blend
+        float[][] fullyConnected_Blend_0 = transposeMatrix(matreader.get2DFloats("fullyconnected_Blend_0.txt",14,80));
+        //second layer of blend
+        float[][] fullyConnected_Blend_1 = transposeMatrix(matreader.get2DFloats("fullyconnected_Blend_1.txt",80,10));
+
+        //last layer of blend
+        float[][] fullyConnected_Blend_2 = transposeMatrix(matreader.get2DFloats("fullyconnected_Blend_2.txt",10,7));
 
 
-        float[] firstRawInput = arrayFactory.get1DFloats("first_raw_input");
-        float[] firstFeature = arrayFactory.get1DFloats("first_feature");
-        float[] secondRawInput = arrayFactory.get1DFloats("second_raw_input");
-        float[] secondFeature = arrayFactory.get1DFloats("second_feature");
+        float[] fullyConnectedB = matreader.get1DFloats("fullyconnectedB.txt",7);
+
+        float[] fullyConnectedB_A = matreader.get1DFloats("fullyconnectedB_A.txt",7);
 
 
-        float[] highPassFilter = arrayFactory.get1DFloats("high_pass_filter");
-        float[] lowPassFilter = arrayFactory.get1DFloats("low_pass_filter");
+        float[] fullyConnectedB_Blend_0 = matreader.get1DFloats("fullyconnectedB_Blend_0.txt",80);
 
-        float[][] tempPca = new float[pcaInputDim][pcaOutputDim];
-        float[][] pca = transposeMatrix(randomInit2D(tempPca));
+        float[] fullyConnectedB_Blend_1 = matreader.get1DFloats("fullyconnectedB_Blend_1.txt",10);
+
+
+
+        float[] fullyConnectedB_Blend_2 = matreader.get1DFloats("fullyconnectedB_Blend_2.txt",7);
+
+
+
+
+        //lstm input are interpreted from ecg input which is raw input of app
+
+
+
+        float[] x_ecg = matreader.get1DFloats("x_ecg.txt",500);
+
+
+        float[] firstRawInput = new float[250];
+        System.arraycopy(x_ecg,0,firstRawInput , 0 , 250);
+        float[] firstFeature = matreader.get1DFloats("firstFeature.txt",4);
+        float[] secondRawInput = new float[250];
+        System.arraycopy(x_ecg,250 ,secondRawInput , 0 , 250);
+        float[] secondFeature = matreader.get1DFloats("secondFeature.txt",4);
+        float[] xr = concatenate(firstFeature , secondFeature);
+
+
+        float[] highPassFilter = matreader.get1DFloats("high_pass_filter.txt",4);
+        float[] lowPassFilter = matreader.get1DFloats("low_pass_filter.txt",4);
+
+
+        float[][] pca = transposeMatrix(matreader.get2DFloats("pca.txt", pcaInputDim_B, pcaOutputDim_B));//528,400 in this case
 
         float[] wavyInput1;
         float[] wavyInput2;
         float[] x1 = null;
 
 
-        for (int index = 0; index < 9; index++) {
+        for (int index = 0; index < 9; index++) { //perform everything 10 times to get a reasonable time by taking median
 
             /*
              ********************************************************************
@@ -337,31 +453,33 @@ public class MainActivity extends Activity {
              ********************************************************************
              */
             double waveletStart = System.currentTimeMillis();
-            for (int numberOfTime = 0; numberOfTime < 1000; numberOfTime++){
 
-                Wavelet wavelet = new Wavelet();
-                wavyInput1 = wavelet.wavelet(waveletOmit,
-                        downSample(firstRawInput, waveletDownSample),
-                        highPassFilter,
-                        lowPassFilter);
+            Wavelet wavelet = new Wavelet();
+            wavyInput1 = wavelet.wavelet(waveletOmit_B,
+                    downSample(firstRawInput, waveletDownSample_B),
+                    highPassFilter,
+                    lowPassFilter);
 
-                wavyInput2 = wavelet.wavelet(waveletOmit,
-                        downSample(secondRawInput, waveletDownSample),
-                        highPassFilter,
-                        lowPassFilter);
+            wavyInput2 = wavelet.wavelet(waveletOmit_B,
+                    downSample(secondRawInput, waveletDownSample_B),
+                    highPassFilter,
+                    lowPassFilter);
 
-                x1 = arrayCutter1D(appender(
-                        downSample(firstRawInput, rawDownSample),
-                        wavyInput1,
-                        firstFeature,
-                        downSample(secondRawInput, rawDownSample),
-                        wavyInput2,
-                        secondFeature), pcaInputDim);
+            x1 = appender(
+                    downSample(firstRawInput, rawDownSample_B),
+                    wavyInput1,
+                    firstFeature,
+                    downSample(secondRawInput, rawDownSample_B),
+                    wavyInput2,
+                    secondFeature);
 
-            }
+
+
+
             double waveletEnd = System.currentTimeMillis();
             double waveletTotalTime = waveletEnd - waveletStart;
             allWaveletTime[index] = waveletTotalTime;
+            float[] x_w = concatenate(wavyInput1,wavyInput2);
 
             /*
              ********************************************************************
@@ -369,9 +487,9 @@ public class MainActivity extends Activity {
              ********************************************************************
              */
             long crossStartTime = System.currentTimeMillis();
-            for (int numberOfTime = 0; numberOfTime < 1000; numberOfTime++) {
-                newCross(x1, pca);
-            }
+
+            float[] betha_input=newCross(x1, pca);
+
 
             long crossEndTime = System.currentTimeMillis();
             allPcaTime[index] = crossEndTime - crossStartTime;
@@ -381,56 +499,196 @@ public class MainActivity extends Activity {
              *****************************   Lstm start  ************************
              ********************************************************************
              */
+
+
+
+            /*
+                Model Betha
+             */
+
+
             long lstmStart = System.currentTimeMillis();
-            for (int numberOfTime = 0; numberOfTime < 1000; numberOfTime++) {
-                for (int l = 0; l < lstmDepth; l++) {
 
-                    c = sum2Vector(
-                            dot(
-                                    sigmoid(sum3vector(
-                                            newCrossInRange(x, w1,
-                                                    l * lstmWidth, (l + 1) * lstmWidth),
-                                            newCross(h, u1),
-                                            b1)
-                                    ),
-                                    tanHEval(sum3vector(
-                                            newCrossInRange(x, w0,
-                                                    l * lstmWidth, (l + 1) * lstmWidth),
-                                            newCross(h, u0),
-                                            b0)
-                                    )
-                            ),
-                            dot(
-                                    sigmoid(sum3vector(
-                                            newCrossInRange(x, w2,
-                                                    l * lstmWidth, (l + 1) * lstmWidth),
-                                            newCross(h, u2),
-                                            b2)
-                                    ),
-                                    c
-                            )
-                    );
-                    h = dot(
-                            sigmoid(
-                                    sum3vector(
-                                            newCrossInRange(x, w3, l * lstmWidth,
-                                                    (l + 1) * lstmWidth),
-                                            newCross(h, u3),
-                                            b3)
-                            ),
-                            tanHEval(c)
-                    );
+            for (int l = 0; l < lstmDepth; l++) {
 
-                }
+                c = sum2Vector(
+                        dot(
+                                sigmoid(sum3vector(//it
+                                        newCrossInRange(betha_input, w1,
+                                                l * lstmWidth, (l + 1) * lstmWidth),
+                                        newCross(h, u1),
+                                        b1)
+                                ),
+                                tanHEval(sum3vector(//mt
+                                        newCrossInRange(betha_input, w0,
+                                                l * lstmWidth, (l + 1) * lstmWidth),
+                                        newCross(h, u0),
+                                        b0)
+                                )
+                        ),
+                        dot(
+                                sigmoid(sum3vector(//ft
+                                        newCrossInRange(betha_input, w2,
+                                                l * lstmWidth, (l + 1) * lstmWidth),
+                                        newCross(h, u2),
+                                        b2)
+                                ),
+                                c
+                        )
+                );
+                h = dot(
+                        sigmoid(//ot
+                                sum3vector(
+                                        newCrossInRange(betha_input, w3, l * lstmWidth,
+                                                (l + 1) * lstmWidth),
+                                        newCross(h, u3),
+                                        b3)
+                        ),
+                        tanHEval(c)
+                );
 
-                //it's the fully connected layer
-                sum2Vector(newCross(h, fullyConnected), fullyConnectedB);
             }
+
+            //it's the fully connected layer
+
+            float[] finalbetha = sum2Vector(newCross(h, fullyConnected), fullyConnectedB);
+
             long lstmEnd = System.currentTimeMillis();
             allLstmTime[index] = lstmEnd - lstmStart;
+            //end of model betha
+
+
+
+
+            /*
+                Model alpha
+
+
+             */
+
+            float [] ttadd = {0,0};
+
+            float[] xr_ecg=concatenate(xr,x_ecg);
+            xr_ecg = concatenate(xr_ecg,ttadd);
+            float[] xr_w=concatenate(xr,x_w);
+            xr_w = concatenate(xr_w,ttadd);
+
+
+
+            long lstm_A_Start = System.currentTimeMillis();
+
+            for (int l = 0; l < DepthA; l++) {
+
+                c_ecg = sum2Vector(
+                        dot(
+                                sigmoid(sum3vector(//it
+                                        newCrossInRange(xr_ecg, w1_A1,
+                                                l * lstmWidth_A1, (l + 1) * lstmWidth_A1),
+                                        newCross(h_ecg, u1_A),
+                                        b1_A)
+                                ),
+                                tanHEval(sum3vector(//mt
+                                        newCrossInRange(xr_ecg, w0_A1,
+                                                l * lstmWidth_A1, (l + 1) * lstmWidth_A1),
+                                        newCross(h_ecg, u0_A),
+                                        b0_A)
+                                )
+                        ),
+                        dot(
+                                sigmoid(sum3vector(//ft
+                                        newCrossInRange(xr_ecg, w2_A1,
+                                                l * lstmWidth_A1, (l + 1) * lstmWidth_A1),
+                                        newCross(h_ecg, u2_A),
+                                        b2_A)
+                                ),
+                                c_ecg
+                        )
+                );
+                h_ecg = dot(
+                        sigmoid(//ot
+                                sum3vector(
+                                        newCrossInRange(xr_ecg, w3_A1, l * lstmWidth_A1,
+                                                (l + 1) * lstmWidth_A1),
+                                        newCross(h_ecg, u3_A),
+                                        b3_A)
+                        ),
+                        tanHEval(c_ecg)
+                );
+
+                c_w = sum2Vector(
+                        dot(
+                                sigmoid(sum3vector(//it
+                                        newCrossInRange(xr_w, w1_A2,
+                                                l * lstmWidth_A2, (l + 1) * lstmWidth_A2),
+                                        newCross(h_w, u1_A),
+                                        b1_A)
+                                ),
+                                tanHEval(sum3vector(//mt
+                                        newCrossInRange(xr_w, w0_A2,
+                                                l * lstmWidth_A2, (l + 1) * lstmWidth_A2),
+                                        newCross(h_w, u0_A),
+                                        b0_A)
+                                )
+                        ),
+                        dot(
+                                sigmoid(sum3vector(//ft
+                                        newCrossInRange(xr_w, w2_A2,
+                                                l * lstmWidth_A2, (l + 1) * lstmWidth_A2),
+                                        newCross(h_w, u2_A),
+                                        b2_A)
+                                ),
+                                c_w
+                        )
+                );
+                h_w = dot(
+                        sigmoid(//ot
+                                sum3vector(
+                                        newCrossInRange(xr_w, w3_A2, l * lstmWidth_A2,
+                                                (l + 1) * lstmWidth_A2),
+                                        newCross(h_w, u3_A),
+                                        b3_A)
+                        ),
+                        tanHEval(c_w)
+                );
+
+            }
+
+            //it's the fully connected layer
+
+            float[] h_final=concatenate(h_ecg,h_w);
+
+            float [] finalalpha=sum2Vector(newCross(h_final, fullyConnected_A), fullyConnectedB_A);
+
+            long lstm_A_End = System.currentTimeMillis();
+            allLstm_A_Time[index] = lstm_A_End - lstm_A_Start;
+
+            //end of model alpha
+
+
+
+
+
+            /*
+                Blender
+
+             */
+
+            long blendStart = System.currentTimeMillis();
+            float [] finalVector= concatenate(finalalpha,finalbetha);
+
+            float [] blend0=sum2Vector(newCross(finalVector,fullyConnected_Blend_0),fullyConnectedB_Blend_0); // to 80 output layer
+
+            float [] blend=sum2Vector(newCross(blend0,fullyConnected_Blend_1),fullyConnectedB_Blend_1);  // to 10 output layer
+
+            float [] result=sum2Vector(newCross(blend,fullyConnected_Blend_2),fullyConnectedB_Blend_2);
+
+            long blend_End = System.currentTimeMillis();
+            allblend_Time[index] = blend_End - blendStart;
+
+
 
             try {
-                Thread.sleep(60000);
+                Thread.sleep(200); //sleep time to let the device cool down,configure depending on device, can omit
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -440,10 +698,12 @@ public class MainActivity extends Activity {
         Arrays.sort(allWaveletTime);
         Arrays.sort(allPcaTime);
         Arrays.sort(allLstmTime);
+        Arrays.sort(allLstm_A_Time);
+        Arrays.sort(allblend_Time);
 
-        double totalTime = allWaveletTime[4] + allPcaTime[4] + allLstmTime[4];
-        return "execution time is: " + totalTime + "per task is: " + allWaveletTime[4] + "," +
-                allPcaTime[4] + "," + allLstmTime[4];
+        double totalTime = allWaveletTime[4] + allPcaTime[4] + allLstmTime[4] + allLstm_A_Time[4] + allblend_Time[4];
+        return "execution time is: " + totalTime /*+ "per task is: " + allWaveletTime[4] + "," +
+                allPcaTime[4] + "," + allLstmTime[4] + "," + allLstm_A_Time[4] + "," + allblend_Time[4]*/;
     }
 
     @Override
@@ -455,37 +715,24 @@ public class MainActivity extends Activity {
         String welcomeString = "welcome to Deep Personal Heart Care(DPHC)";
         mTextView.setText(welcomeString);
 
-//        Thread backgroundThread = new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                message = mainFunction();
-//            }
-//        });
-//
-//        try {
-//
-//            backgroundThread.start();
-//            backgroundThread.join();
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-
 
         MainFunctionTask mainFunctionTask = new MainFunctionTask();
         mainFunctionTask.execute();
 
 
-//        String wholeMessage = mTextView.getText() + "\n" +  message;
-//        mTextView.setText(wholeMessage);
-//        Log.d("TIME", "Total execution time with Thread is: " + message);
     }
 
     private class MainFunctionTask extends AsyncTask<Void, Void, String> {
 
         @Override
         protected String doInBackground(Void... params) {
-            return mainFunction();
+                try {
+                    return mainFunction();
+                }catch(Exception e){
+                    e.printStackTrace();
+                    return "error in loading files";
+
+                }
         }
 
         @Override
